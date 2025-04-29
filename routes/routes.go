@@ -1,15 +1,14 @@
 package routes
 
 import (
-	"ticatag_backend/handlers"
-
+	
 	"github.com/gin-gonic/gin"
 )
 
 func SetupRoutesDevices(router *gin.Engine) {
 
-	r := router.Group("/devices")
-	r.POST("/", handlers.CreateDevice)
+/* 	r := router.Group("/devices")
+	r.POST("/", handlers.CreateDevice) */
 
 }
 

@@ -9,7 +9,11 @@ import (
 	//"context"
 	//"encoding/json"
 	//"fmt"
+
 	"ticatag_backend/db"
+	"ticatag_backend/middleware"
+
+	//"ticatag_backend/middleware"
 	"time"
 
 	//"ticatag_backend/models"
@@ -30,21 +34,9 @@ import (
 
 func main() {
 
-	//db.ConnectDB() // Connexion MongoDB
-
 	db.Connect()
 
-	//var coll = config.GetCollection("movies")cls
-
-	//GetBookByTitle("Millénium")
-
-	//GetBooks()
-
-	//CreateOneBook("Atonement", "Ian McEwan")
-
 	r := gin.Default()
-
-	//r.Use(cors.Default())
 
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:3000"},
@@ -55,11 +47,24 @@ func main() {
 		MaxAge:           12 * time.Hour,
 	}))
 
-	r.POST("/api/devices", controllers.CreateDevice)
-	r.GET("/api/devices", controllers.GetDevices)
-	r.GET("/api/devices/:id", controllers.GetDevice)
-	r.PUT("/api/devices/:id", controllers.UpdateDevice)
-	r.DELETE("/api/devices/:id", controllers.DeleteDevice)
+	// Routes publiques
+	r.POST("/login", controllers.Login)
+	r.POST("/register", controllers.Register)
+	r.GET("/api/devices/profile", controllers.Profile)
+
+	protected := r.Group("/api/devices")
+
+	protected.Use(middleware.AuthMiddleware())
+	{
+
+		protected.GET("", controllers.GetDevices)
+		protected.POST("", controllers.CreateDevice)
+		protected.GET("/:id", controllers.GetDevice)
+		protected.PUT("/:id", controllers.UpdateDevice)
+		protected.DELETE("/:id", controllers.DeleteDevice)
+		protected.GET("/search", controllers.FindDeviceByAdress)
+
+	}
 
 	/* r.POST("/api/login", controllers.Login)
 	protected := r.Group("/api")
@@ -72,70 +77,3 @@ func main() {
 
 	r.Run(":8080")
 }
-
-/*
-func GetBookByTitle(title string) {
-
-	var coll = config.GetCollection("books")
-
-	var result bson.M
-	err := coll.FindOne(context.TODO(), bson.D{{Key: "title", Value: title}}).
-		Decode(&result)
-	if err == mongo.ErrNoDocuments {
-		fmt.Printf("No document was found with the title %s\n", title)
-		return
-	}
-	if err != nil {
-		panic(err)
-	}
-	jsonData, err := json.MarshalIndent(result, "", "    ")
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("%s\n", jsonData)
-
-}
-
-func GetBooks() {
-
-	var coll = config.GetCollection("books")
-
-	// Lecture de tous les éléments
-	cursor, err := coll.Find(context.TODO(), bson.D{})
-	if err != nil {
-		panic(err)
-	}
-
-	for cursor.Next(context.TODO()) {
-		var result bson.M
-		if err := cursor.Decode(&result); err != nil {
-			log.Fatal(err)
-		}
-		//fmt.Printf("%+v\n", result)
-		jsonData, err := json.MarshalIndent(result, "", "    ")
-		if err != nil {
-			panic(err)
-		}
-		fmt.Printf("%s\n", jsonData)
-	}
-	if err := cursor.Err(); err != nil {
-		log.Fatal(err)
-	}
-
-}
-
-func CreateOneBook(new_title string, new_author string) {
-
-	var coll = config.GetCollection("books")
-
-	doc := models.Book{Title: new_title, Author: new_author}
-
-	result, err := coll.InsertOne(context.TODO(), doc)
-
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	fmt.Printf("Inserted document with _id: %v\n", result.InsertedID)
-}
-*/

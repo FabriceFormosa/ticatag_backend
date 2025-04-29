@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"ticatag_backend/db"
 	"ticatag_backend/models"
 	"time"
@@ -13,6 +14,7 @@ import (
 
 func GetDevices(c *gin.Context) {
 
+	fmt.Println("Appel fct GetDevices ")
 	collection := db.DB.Collection("devices")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -36,6 +38,7 @@ func GetDevices(c *gin.Context) {
 
 func CreateDevice(c *gin.Context) {
 
+	fmt.Println("Appel fct CreateDevice ")
 	collection := db.DB.Collection("devices")
 
 	var device models.Device
@@ -56,6 +59,8 @@ func CreateDevice(c *gin.Context) {
 
 func GetDevice(c *gin.Context) {
 
+	fmt.Println("Appel fct GetDevice ")
+
 	collection := db.DB.Collection("devices")
 
 	idParam := c.Param("id")
@@ -73,6 +78,8 @@ func GetDevice(c *gin.Context) {
 }
 
 func UpdateDevice(c *gin.Context) {
+
+	fmt.Println("Appel fct UpdateDevice ")
 
 	collection := db.DB.Collection("devices")
 
@@ -99,6 +106,8 @@ func UpdateDevice(c *gin.Context) {
 
 func DeleteDevice(c *gin.Context) {
 
+	fmt.Println("Appel fct DeleteDevice ")
+
 	collection := db.DB.Collection("devices")
 
 	idParam := c.Param("id")
@@ -112,4 +121,34 @@ func DeleteDevice(c *gin.Context) {
 		return
 	}
 	c.JSON(200, gin.H{"message": "Utilisateur supprimé"})
+}
+
+func FindDeviceByAdress(c *gin.Context) {
+
+	fmt.Println("Appel fct FindDeviceByAdress ")
+
+	collection := db.DB.Collection("devices")
+
+	query := c.Query("q")
+	if len(query) < 2 {
+		c.JSON(400, gin.H{"error": "requête trop courte"})
+		return
+	}
+
+	filter := bson.M{"adress": bson.M{"$regex": query, "$options": "i"}} // recherche insensible à la casse
+
+	cursor, err := collection.Find(context.TODO(), filter)
+	if err != nil {
+		c.JSON(500, gin.H{"error": "erreur serveur"})
+		return
+	}
+	defer cursor.Close(context.TODO())
+
+	var results []map[string]interface{}
+	if err = cursor.All(context.TODO(), &results); err != nil {
+		c.JSON(500, gin.H{"error": "erreur de lecture"})
+		return
+	}
+
+	c.JSON(200, results)
 }
