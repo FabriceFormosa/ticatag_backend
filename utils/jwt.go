@@ -47,7 +47,7 @@ func ParseToken(tokenString string) (string, error) {
 	}
 
 	token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-		fmt.Println("La variable JWT_SECRET est publiée.")
+		//fmt.Println("La variable JWT_SECRET est publiée.")
 		return []byte(secret), nil
 	})
 

@@ -1,31 +1,47 @@
 package routes
 
 import (
-	
+	"ticatag_backend/controllers"
+	"ticatag_backend/middleware"
+	"time"
+
+	"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 )
 
-func SetupRoutesDevices(router *gin.Engine) {
 
-/* 	r := router.Group("/devices")
-	r.POST("/", handlers.CreateDevice) */
 
-}
+func SetupRoutes() *gin.Engine{
 
-func SetupRoutes(router *gin.Engine) {
+	r := gin.Default()
 
-	/* r := router.Group("/books")
+	r.Use(cors.New(cors.Config{
+		AllowOrigins:     []string{"http://localhost:3000"},
+		AllowMethods:     []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
+		AllowHeaders:     []string{"Origin", "Content-Type", "Authorization"},
+		ExposeHeaders:    []string{"Content-Length"},
+		AllowCredentials: true,
+		MaxAge:           12 * time.Hour,
+	}))
+	// Routes publiques
+	r.POST("/login", controllers.Login)
+	r.POST("/register", controllers.Register)
+	r.GET("/api/devices/profile", controllers.Profile)
+
+	protected := r.Group("/api/devices")
+
+	protected.Use(middleware.AuthMiddleware())
 	{
-		r.GET("/", handlers.GetBooks)
-	} */
 
-	/* 	r := router.Group("/produits")
-		{
+		protected.GET("", controllers.GetDevices)
+		protected.POST("", controllers.CreateDevice)
+		protected.GET("/:id", controllers.GetDevice)
+		protected.PUT("/:id", controllers.UpdateDevice)
+		protected.DELETE("/:id", controllers.DeleteDevice)
+		protected.GET("/search", controllers.FindDeviceByAdress)
 
-	 		r.GET("/", handlers.GetProduits)
-	 		r.GET("/:id", handlers.GetProduitByID)
-			r.POST("/", handlers.CreateProduit)
-			r.PUT("/:id", handlers.UpdateProduit)
-			r.DELETE("/:id", handlers.DeleteProduit)
-		}  */
+	}
+
+	return r
+
 }

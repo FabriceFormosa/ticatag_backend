@@ -15,7 +15,7 @@ import (
 func AuthMiddleware() gin.HandlerFunc {
 	return func(c *gin.Context) {
 
-		fmt.Println("Appel fct AuthMiddleware ")
+		//fmt.Println("Appel fct AuthMiddleware ")
 
 		// Récupération de la clé secrète depuis les variables d'environnement
 		secret := os.Getenv("JWT_SECRET")
@@ -26,14 +26,14 @@ func AuthMiddleware() gin.HandlerFunc {
 
 		authHeader := c.GetHeader("Authorization")
 		if authHeader == "" {
-			fmt.Println("fct AuthMiddleware Authorization header missing")
+			//fmt.Println("fct AuthMiddleware Authorization header missing")
 			c.AbortWithStatusJSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
 			return
 		}
 
 		tokenString := strings.TrimPrefix(authHeader, "Bearer ")
 		token, err := jwt.Parse(tokenString, func(token *jwt.Token) (any, error) {
-			fmt.Println("AuthMiddleware :La variable secret est publiée ")
+			//fmt.Println("AuthMiddleware :La variable secret est publiée ")
 			return []byte(secret), nil
 		})
 

@@ -2,7 +2,7 @@ package controllers
 
 import (
 	"context"
-	"fmt"
+	"net/http"
 	"ticatag_backend/db"
 	"ticatag_backend/models"
 	"time"
@@ -14,7 +14,7 @@ import (
 
 func GetDevices(c *gin.Context) {
 
-	fmt.Println("Appel fct GetDevices ")
+	//fmt.Println("Appel fct GetDevices ")
 	collection := db.DB.Collection("devices")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -38,7 +38,7 @@ func GetDevices(c *gin.Context) {
 
 func CreateDevice(c *gin.Context) {
 
-	fmt.Println("Appel fct CreateDevice ")
+	//fmt.Println("Appel fct CreateDevice ")
 	collection := db.DB.Collection("devices")
 
 	var device models.Device
@@ -59,19 +59,23 @@ func CreateDevice(c *gin.Context) {
 
 func GetDevice(c *gin.Context) {
 
-	fmt.Println("Appel fct GetDevice ")
+	//fmt.Println("Appel fct GetDevice ")
 
 	collection := db.DB.Collection("devices")
 
 	idParam := c.Param("id")
-	objID, _ := primitive.ObjectIDFromHex(idParam)
+	objID, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID invalide"})
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	var device models.Device
-	err := collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&device)
+	err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&device)
 	if err != nil {
-		c.JSON(404, gin.H{"error": "Utilisateur introuvable"})
+		c.JSON(404, gin.H{"error": "Device introuvable"})
 		return
 	}
 	c.JSON(200, device)
@@ -79,7 +83,7 @@ func GetDevice(c *gin.Context) {
 
 func UpdateDevice(c *gin.Context) {
 
-	fmt.Println("Appel fct UpdateDevice ")
+	//fmt.Println("Appel fct UpdateDevice ")
 
 	collection := db.DB.Collection("devices")
 
@@ -106,7 +110,7 @@ func UpdateDevice(c *gin.Context) {
 
 func DeleteDevice(c *gin.Context) {
 
-	fmt.Println("Appel fct DeleteDevice ")
+	//fmt.Println("Appel fct DeleteDevice ")
 
 	collection := db.DB.Collection("devices")
 
@@ -125,7 +129,7 @@ func DeleteDevice(c *gin.Context) {
 
 func FindDeviceByAdress(c *gin.Context) {
 
-	fmt.Println("Appel fct FindDeviceByAdress ")
+	//fmt.Println("Appel fct FindDeviceByAdress ")
 
 	collection := db.DB.Collection("devices")
 
