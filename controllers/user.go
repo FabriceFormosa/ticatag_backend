@@ -2,6 +2,7 @@ package controllers
 
 import (
 	"context"
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -50,6 +51,7 @@ Renvoie les données du profil
 
 // Fonction pour obtenir le profil utilisateur
 func Profile(c *gin.Context) {
+	fmt.Println("Appel fct Profile ")
 	// Récupère le token Authorization: Bearer <token>
 	authHeader := c.GetHeader("Authorization")
 	if authHeader == "" {

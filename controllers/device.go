@@ -109,22 +109,29 @@ func UpdateDevice(c *gin.Context) {
 }
 
 func DeleteDevice(c *gin.Context) {
-
-	//fmt.Println("Appel fct DeleteDevice ")
-
 	collection := db.DB.Collection("devices")
 
 	idParam := c.Param("id")
-	objID, _ := primitive.ObjectIDFromHex(idParam)
+	objID, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "ID invalide"})
+		return
+	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := collection.DeleteOne(ctx, bson.M{"_id": objID})
+
+	result, err := collection.DeleteOne(ctx, bson.M{"_id": objID})
 	if err != nil {
-		c.JSON(500, gin.H{"error": err.Error()})
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la suppression"})
 		return
 	}
-	c.JSON(200, gin.H{"message": "Utilisateur supprimé"})
+	if result.DeletedCount == 0 {
+		c.JSON(http.StatusNotFound, gin.H{"error": "No device found with this Id"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{"message": "Device supprimé"})
 }
 
 func FindDeviceByAdress(c *gin.Context) {

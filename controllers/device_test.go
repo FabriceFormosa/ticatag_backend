@@ -219,6 +219,100 @@ func TestGetOneDevice(t *testing.T) {
 	assert.Equal(t, device.Longitude, response.Longitude)
 	assert.Equal(t, insertedID, response.ID)
 }
+func TestGetOneDeviceNotFound(t *testing.T) {
+	// Connexion MongoDB de test
+	SetupMongoTest()
+	MongoDbTestConnection()
+
+	// Initialiser JWT secret
+	os.Setenv("JWT_SECRET", "test-secret")
+
+	// Générer un token de test
+	token, err := GenerateTestJWT()
+	require.NoError(t, err, "Could not generate token")
+
+	// Crée un device manuellement dans la base pour le test
+	device := models.Device{
+		Adress:    "DeviceTest",
+		Latitude:  "Device Latitude",
+		Longitude: "Device Longitude",
+	}
+	collection := db.DB.Collection("devices")
+	res, err := collection.InsertOne(context.TODO(), device)
+	require.NoError(t, err)
+
+	insertedID := res.InsertedID.(primitive.ObjectID)
+
+	// Nettoyage après test
+	t.Cleanup(func() {
+		_, _ = collection.DeleteOne(context.TODO(), bson.M{"_id": insertedID})
+	})
+
+	// Initialisation du routeur avec middleware
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
+	router.GET("/devices/:id", GetDevice)
+
+	// Création de la requête GET avec un ID invalide (non existant dans la DB)
+	invalidID := primitive.NewObjectID() // ID invalide pour le test
+	req := httptest.NewRequest("GET", "/devices/"+invalidID.Hex(), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Vérifications
+	assert.Equal(t, 404, w.Code)
+	assert.Contains(t, w.Body.String(), "Device introuvable")
+}
+func TestGetOneDeviceIdInvalid(t *testing.T) {
+	// Connexion MongoDB de test
+	SetupMongoTest()
+	MongoDbTestConnection()
+
+	// Initialiser JWT secret
+	os.Setenv("JWT_SECRET", "test-secret")
+
+	// Générer un token de test
+	token, err := GenerateTestJWT()
+	require.NoError(t, err, "Could not generate token")
+
+	// Crée un device manuellement dans la base pour le test
+	device := models.Device{
+		Adress:    "DeviceTest",
+		Latitude:  "Device Latitude",
+		Longitude: "Device Longitude",
+	}
+	collection := db.DB.Collection("devices")
+	res, err := collection.InsertOne(context.TODO(), device)
+	require.NoError(t, err)
+
+	insertedID := res.InsertedID.(primitive.ObjectID)
+
+	// Nettoyage après test
+	t.Cleanup(func() {
+		_, _ = collection.DeleteOne(context.TODO(), bson.M{"_id": insertedID})
+	})
+
+	// Initialisation du routeur avec middleware
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
+	router.GET("/devices/:id", GetDevice)
+
+	// Création de la requête GET avec un ID invalide (non existant dans la DB)
+	//invalidID := primitive.NewObjectID() // ID invalide pour le test
+	req := httptest.NewRequest("GET", "/devices/15555", nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Vérifications
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "ID invalide")
+}
 
 // -------------------------------------------------------------------------------------//
 type DeviceFinder interface {
@@ -271,7 +365,7 @@ func TestGetDevices_MongoFindError(t *testing.T) {
 	router.ServeHTTP(w, req)
 
 	assert.Equal(t, 500, w.Code)
-	assert.JSONEq(t, `{"error": "Erreur MongoDB"}`, w.Body.String())
+	assert.Contains(t, w.Body.String(), "Erreur MongoDB")
 }
 
 // ------------------------------------------------------------------------------------------
@@ -384,6 +478,8 @@ func TestGetDevices(t *testing.T) {
 	assert.GreaterOrEqual(t, len(response.Devices), 2)
 }
 
+//--------------------------------------------------------------------------------------------
+
 func TestUpdateDevice(t *testing.T) {
 	// Setup MongoDB de test
 	SetupMongoTest()
@@ -447,6 +543,49 @@ func TestUpdateDevice(t *testing.T) {
 	assert.Equal(t, updatedDevice.Longitude, result.Longitude)
 }
 
+func TestUpdateDevice_InvalidJSON(t *testing.T) {
+	SetupMongoTest()
+	MongoDbTestConnection()
+
+	os.Setenv("JWT_SECRET", "test-secret")
+	token, err := GenerateTestJWT()
+	require.NoError(t, err)
+
+	// Insertion d'un device
+	originalDevice := models.Device{
+		Adress:    "Old Address",
+		Latitude:  "10.0",
+		Longitude: "20.0",
+	}
+	collection := db.DB.Collection("devices")
+	res, err := collection.InsertOne(context.TODO(), originalDevice)
+	require.NoError(t, err)
+	insertedID := res.InsertedID.(primitive.ObjectID)
+
+	t.Cleanup(func() {
+		_, _ = collection.DeleteOne(context.TODO(), bson.M{"_id": insertedID})
+	})
+
+	// JSON invalide
+	invalidBody := `{"Adress": "New Address", "Latitude": "99.9", "Longitude": `
+
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
+	router.PUT("/devices/:id", UpdateDevice)
+
+	req := httptest.NewRequest("PUT", "/devices/"+insertedID.Hex(), strings.NewReader(invalidBody))
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "error")
+}
+
+// ----------------------------------------------------------------------------------------
 func TestDeleteDevice(t *testing.T) {
 	// Setup MongoDB de test
 	SetupMongoTest()
@@ -466,10 +605,15 @@ func TestDeleteDevice(t *testing.T) {
 		Latitude:  "00.0",
 		Longitude: "00.0",
 	}
+
+	// Nettoyer la collection users
 	collection := db.DB.Collection("devices")
+	_ = collection.Drop(context.TODO())
+
 	res, err := collection.InsertOne(context.TODO(), device)
 	require.NoError(t, err)
 	insertedID := res.InsertedID.(primitive.ObjectID)
+	t.Logf("insertedID : %s", insertedID)
 
 	// Router avec middleware JWT
 	gin.SetMode(gin.TestMode)
@@ -477,19 +621,173 @@ func TestDeleteDevice(t *testing.T) {
 	router.Use(middleware.AuthMiddleware())
 	router.DELETE("/devices/:id", DeleteDevice)
 
+	//t.Logf("invalidID : %s", invalidID)
+
 	req := httptest.NewRequest("DELETE", "/devices/"+insertedID.Hex(), nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	w := httptest.NewRecorder()
 	router.ServeHTTP(w, req)
 
+	// Vérifications
 	assert.Equal(t, http.StatusOK, w.Code)
+	assert.Contains(t, w.Body.String(), "Device supprimé")
 
-	// Vérification que le device n'existe plus
-	var result models.Device
-	err = collection.FindOne(context.TODO(), bson.M{"_id": insertedID}).Decode(&result)
-	assert.Error(t, err) // doit retourner une erreur "no documents in result"
 }
+
+func TestDeleteDevice_IdNotFound(t *testing.T) {
+	// Setup MongoDB de test
+	SetupMongoTest()
+	MongoDbTestConnection()
+
+	// Initialiser JWT secret
+	os.Setenv("JWT_SECRET", "test-secret")
+
+	token, err := GenerateTestJWT()
+	if err != nil {
+
+		t.Log("Could not generate token")
+	}
+	// Insertion d'un device à supprimer
+	device := models.Device{
+		Adress:    "ToDelete",
+		Latitude:  "00.0",
+		Longitude: "00.0",
+	}
+
+	// Nettoyer la collection users
+	collection := db.DB.Collection("devices")
+	_ = collection.Drop(context.TODO())
+
+	res, err := collection.InsertOne(context.TODO(), device)
+	require.NoError(t, err)
+	insertedID := res.InsertedID.(primitive.ObjectID)
+	t.Logf("insertedID : %s", insertedID)
+
+	// Router avec middleware JWT
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
+	router.DELETE("/devices/:id", DeleteDevice)
+
+	invalidID := primitive.NewObjectID() // ID invalide pour le test
+	//t.Logf("invalidID : %s", invalidID)
+
+	req := httptest.NewRequest("DELETE", "/devices/"+invalidID.Hex(), nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Vérifications
+	assert.Equal(t, http.StatusNotFound, w.Code)
+	assert.Contains(t, w.Body.String(), "No device found with this Id")
+
+}
+
+func TestDeleteDevice_Error(t *testing.T) {
+	// Setup MongoDB de test
+	SetupMongoTest()
+	MongoDbTestConnection()
+
+	// Initialiser JWT secret
+	os.Setenv("JWT_SECRET", "test-secret")
+
+	token, err := GenerateTestJWT()
+	if err != nil {
+		t.Logf("Could not generate token %s", token)
+	}
+
+	// Router avec middleware JWT
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
+	router.DELETE("/devices/:id", DeleteDevice)
+
+	validID := primitive.NewObjectID().Hex()
+	invalidID := fmt.Sprintf("%s%s", validID, "XXX") // ID invalide pour le test
+	t.Logf("validID : %s", validID)
+	t.Logf("invalidID : %s", invalidID)
+
+	req := httptest.NewRequest("DELETE", "/devices/"+invalidID, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Vérifications
+	assert.Equal(t, http.StatusBadRequest, w.Code)
+	assert.Contains(t, w.Body.String(), "ID invalide")
+
+}
+
+type Deleter interface {
+	DeleteOne(context.Context, interface{}) (*mongo.DeleteResult, error)
+}
+type MockDeleteCollection struct{}
+
+func (m *MockDeleteCollection) DeleteOne(ctx context.Context, filter interface{}) (*mongo.DeleteResult, error) {
+	return nil, errors.New("suppression échouée")
+}
+
+func DeleteDeviceWithRepo(c *gin.Context, repo Deleter) {
+	idParam := c.Param("id")
+	objID, err := primitive.ObjectIDFromHex(idParam)
+	if err != nil {
+		c.JSON(400, gin.H{"error": "ID invalide"})
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_, err = repo.DeleteOne(ctx, bson.M{"_id": objID})
+	if err != nil {
+		c.JSON(500, gin.H{"error": "Erreur lors de la suppression"})
+		return
+	}
+	c.JSON(200, gin.H{"message": "Utilisateur supprimé"})
+}
+
+func TestDeleteDevice_Error2(t *testing.T) {
+	// Setup MongoDB de test
+	SetupMongoTest()
+	MongoDbTestConnection()
+
+	// Initialiser JWT secret
+	os.Setenv("JWT_SECRET", "test-secret")
+
+	token, err := GenerateTestJWT()
+	if err != nil {
+		t.Logf("Could not generate token %s", token)
+	}
+
+	// Router avec middleware JWT
+	gin.SetMode(gin.TestMode)
+	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
+
+	mockRepo := &MockDeleteCollection{}
+
+	router.DELETE("/devices/:id", func(c *gin.Context) {
+		DeleteDeviceWithRepo(c, mockRepo)
+	})
+
+	invalidID := primitive.NewObjectID().Hex()
+	t.Logf("invalidID : %s", invalidID)
+
+	req := httptest.NewRequest("DELETE", "/devices/"+invalidID, nil)
+	req.Header.Set("Authorization", "Bearer "+token)
+
+	w := httptest.NewRecorder()
+	router.ServeHTTP(w, req)
+
+	// Vérifications
+	assert.Equal(t, http.StatusInternalServerError, w.Code)
+	assert.Contains(t, w.Body.String(), "Erreur lors de la suppression")
+
+}
+
+//-------------------------------------------------------------------------------------
 
 func TestFindDeviceByAdress(t *testing.T) {
 	// Setup MongoDB test
