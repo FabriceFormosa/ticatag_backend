@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"ticatag_backend/db"
 	"ticatag_backend/models"
+	"ticatag_backend/resources"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -14,7 +15,6 @@ import (
 
 func GetDevices(c *gin.Context) {
 
-	//fmt.Println("Appel fct GetDevices ")
 	collection := db.DB.Collection("devices")
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
@@ -33,12 +33,13 @@ func GetDevices(c *gin.Context) {
 		return
 	}
 
-	c.JSON(200, gin.H{"devices": devices})
+	devicesResponses := resources.NewDeviceListResponse(devices)
+
+	c.JSON(200, gin.H{"devices": devicesResponses})
 }
 
 func CreateDevice(c *gin.Context) {
 
-	//fmt.Println("Appel fct CreateDevice ")
 	collection := db.DB.Collection("devices")
 
 	var device models.Device
@@ -59,8 +60,6 @@ func CreateDevice(c *gin.Context) {
 
 func GetDevice(c *gin.Context) {
 
-	//fmt.Println("Appel fct GetDevice ")
-
 	collection := db.DB.Collection("devices")
 
 	idParam := c.Param("id")
@@ -72,18 +71,20 @@ func GetDevice(c *gin.Context) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
+
 	var device models.Device
 	err = collection.FindOne(ctx, bson.M{"_id": objID}).Decode(&device)
+
 	if err != nil {
 		c.JSON(404, gin.H{"error": "Device introuvable"})
 		return
 	}
-	c.JSON(200, device)
+
+	deviceResponse := resources.NewDeviceResponse(device)
+	c.JSON(200, deviceResponse)
 }
 
 func UpdateDevice(c *gin.Context) {
-
-	//fmt.Println("Appel fct UpdateDevice ")
 
 	collection := db.DB.Collection("devices")
 
@@ -134,9 +135,7 @@ func DeleteDevice(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "Device supprimé"})
 }
 
-func FindDeviceByAdress(c *gin.Context) {
-
-	//fmt.Println("Appel fct FindDeviceByAdress ")
+func FindDeviceByAddress(c *gin.Context) {
 
 	collection := db.DB.Collection("devices")
 
@@ -155,11 +154,15 @@ func FindDeviceByAdress(c *gin.Context) {
 	}
 	defer cursor.Close(context.TODO())
 
-	var results []map[string]interface{}
-	if err = cursor.All(context.TODO(), &results); err != nil {
+	//var devices []map[string]interface{}
+	var devices []models.Device
+
+	if err = cursor.All(context.TODO(), &devices); err != nil {
 		c.JSON(500, gin.H{"error": "erreur de lecture"})
 		return
 	}
 
-	c.JSON(200, results)
+	devicesResponses := resources.NewDeviceListResponse(devices)
+
+	c.JSON(200, devicesResponses)
 }

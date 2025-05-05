@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"os"
 	"strings"
+	"ticatag_backend/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/golang-jwt/jwt" // vérifie ta version de jwt-go ou autre
@@ -43,8 +44,14 @@ func AuthMiddleware() gin.HandlerFunc {
 			return
 		}
 
-		// Si tu veux récupérer des claims (infos dans le token)
-		//claims := token.Claims.(jwt.MapClaims)
+		// récupère l'ID utilisateur
+		userID, err := utils.ParseToken(tokenString)
+		if err != nil {
+			c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
+			return
+		}
+
+		c.Set("user_id", userID)
 
 		c.Next()
 	}

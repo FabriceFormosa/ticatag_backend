@@ -2,14 +2,12 @@ package controllers
 
 import (
 	"context"
-	"fmt"
 	"net/http"
-	"strings"
 
 	//"net/http"
 	"ticatag_backend/db"
 	"ticatag_backend/models"
-	"ticatag_backend/utils"
+	"ticatag_backend/resources"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -51,26 +49,10 @@ Renvoie les données du profil
 
 // Fonction pour obtenir le profil utilisateur
 func Profile(c *gin.Context) {
-	fmt.Println("Appel fct Profile ")
-	// Récupère le token Authorization: Bearer <token>
-	authHeader := c.GetHeader("Authorization")
-	if authHeader == "" {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Authorization header missing"})
-		return
-	}
 
-	// Extrait le token
-	tokenString := strings.TrimPrefix(authHeader, "Bearer ")
-	if tokenString == authHeader {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token format"})
-		return
-	}
-
-	// Vérifie le token et récupère l'ID utilisateur
-	userID, err := utils.ParseToken(tokenString)
-	if err != nil {
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid token"})
-		return
+	userID, ok := c.MustGet("user_id").(string)
+	if !ok {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "Invalid user ID"})
 	}
 
 	// Convertit l'ID en ObjectID MongoDB
@@ -92,13 +74,14 @@ func Profile(c *gin.Context) {
 		c.JSON(http.StatusNotFound, gin.H{"error": "User not found"})
 		return
 	}
+	userResponse := resources.NewUserResponse(user)
 
 	// Réponse propre (on ne renvoie pas le mot de passe !)
 	c.JSON(http.StatusOK, gin.H{
-		"id":        user.ID.Hex(),
-		"username":  user.Username,
-		"email":     user.Email,
-		"role":      user.Role,
-		"createdAt": user.CreatedAt,
+		//"id":        user.ID.Hex(),
+		"username":  userResponse.Username,
+		"email":     userResponse.Email,
+		"role":      userResponse.Role,
+		"createdAt": userResponse.CreatedAt,
 	})
 }

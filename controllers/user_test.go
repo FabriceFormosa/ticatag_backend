@@ -47,6 +47,7 @@ func TestProfile(t *testing.T) {
 	// Prépare le routeur
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
 	router.GET("/profile", Profile)
 
 	// Crée une requête avec le token dans l'en-tête Authorization
@@ -185,6 +186,7 @@ func TestProfile_MissingAuthorizationHeader(t *testing.T) {
 	// Prépare le routeur
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
+	router.Use(middleware.AuthMiddleware())
 	router.GET("/profile", Profile)
 
 	// Crée une requête avec le token dans l'en-tête Authorization

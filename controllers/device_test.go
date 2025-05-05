@@ -772,10 +772,10 @@ func TestDeleteDevice_Error2(t *testing.T) {
 		DeleteDeviceWithRepo(c, mockRepo)
 	})
 
-	invalidID := primitive.NewObjectID().Hex()
-	t.Logf("invalidID : %s", invalidID)
+	validID := primitive.NewObjectID().Hex()
+	t.Logf("validID : %s", validID)
 
-	req := httptest.NewRequest("DELETE", "/devices/"+invalidID, nil)
+	req := httptest.NewRequest("DELETE", "/devices/"+validID, nil)
 	req.Header.Set("Authorization", "Bearer "+token)
 
 	w := httptest.NewRecorder()
@@ -826,7 +826,7 @@ func TestFindDeviceByAdress(t *testing.T) {
 	gin.SetMode(gin.TestMode)
 	router := gin.Default()
 	router.Use(middleware.AuthMiddleware())
-	router.GET("/devices/search", FindDeviceByAdress)
+	router.GET("/devices/search", FindDeviceByAddress)
 
 	// Requête GET avec query ?q=paris
 	req := httptest.NewRequest("GET", "/devices/search?q=paris", nil)

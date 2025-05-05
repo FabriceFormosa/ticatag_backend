@@ -21,22 +21,23 @@ func SetupRoutes() *gin.Engine {
 		AllowCredentials: true,
 		MaxAge:           12 * time.Hour,
 	}))
+
 	// Routes publiques
 	r.POST("/login", controllers.Login)
 	r.POST("/register", controllers.Register)
-	r.GET("/api/devices/profile", controllers.Profile)
 
 	protected := r.Group("/api/devices")
 
 	protected.Use(middleware.AuthMiddleware())
 	{
+		protected.GET("/profile", controllers.Profile)
 
 		protected.GET("", controllers.GetDevices)
 		protected.POST("", controllers.CreateDevice)
 		protected.GET("/:id", controllers.GetDevice)
 		protected.PUT("/:id", controllers.UpdateDevice)
 		protected.DELETE("/:id", controllers.DeleteDevice)
-		protected.GET("/search", controllers.FindDeviceByAdress)
+		protected.GET("/search", controllers.FindDeviceByAddress)
 
 	}
 
