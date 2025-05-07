@@ -56,7 +56,19 @@ func CreateDevice(c *gin.Context) {
 	device.CreatedAt = time.Now().Unix()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
-	_, err := collection.InsertOne(ctx, device)
+
+	// 🔍 Vérifier si un device avec la même adresse existe déjà
+	count, err := collection.CountDocuments(ctx, bson.M{"adress": device.Adress})
+	if err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "Erreur lors de la vérification de doublon"})
+		return
+	}
+	if count > 0 {
+		c.JSON(http.StatusConflict, gin.H{"error": "Un device avec cette adresse existe déjà"})
+		return
+	}
+
+	_, err = collection.InsertOne(ctx, device)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Erreur lors de l'insertion"})
 		return
