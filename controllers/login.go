@@ -5,6 +5,7 @@ import (
 	"net/http"
 	"ticatag_backend/db"
 	"ticatag_backend/models"
+	"ticatag_backend/resources"
 	"ticatag_backend/utils"
 	"time"
 
@@ -13,9 +14,8 @@ import (
 	"golang.org/x/crypto/bcrypt"
 )
 
-
 type LoginInput struct {
-	Username string `json:"username" binding:"required"`
+	Email    string `json:"email" binding:"required"`
 	Password string `json:"password" binding:"required"`
 }
 
@@ -31,9 +31,9 @@ func Login(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
-	// Trouver l'utilisateur par username
+	// Trouver l'utilisateur par Email
 	var user models.User
-	err := userCollection.FindOne(ctx, bson.M{"username": input.Username}).Decode(&user)
+	err := userCollection.FindOne(ctx, bson.M{"email": input.Email}).Decode(&user)
 	if err != nil {
 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid credentials"})
 		return
@@ -47,14 +47,18 @@ func Login(c *gin.Context) {
 	}
 
 	// Générer le token JWT
-	token, err := utils.GenerateJWT(user.ID.Hex(), user.Role,user.Email,user.CreatedAt)
+	token, err := utils.GenerateJWT(user.ID.Hex(), user.Role, user.Email, user.CreatedAt)
 	if err != nil {
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Could not generate token"})
 		return
 	}
 
+
+	userResponse := resources.NewUserResponse(user)
+
 	c.JSON(http.StatusOK, gin.H{
 		"token": token,
+		"user":  userResponse,
 	})
 }
 

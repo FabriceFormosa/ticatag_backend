@@ -11,6 +11,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func GetDevices(c *gin.Context) {
@@ -20,7 +21,11 @@ func GetDevices(c *gin.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
-	cursor, err := collection.Find(ctx, bson.M{})
+	opts := options.Find()
+	opts.SetSort(bson.D{{"created_at", -1}}) // ou "_id" si tu n'as pas de created_at
+	opts.SetLimit(25)
+
+	cursor, err := collection.Find(ctx, bson.M{}, opts)
 	if err != nil {
 		c.JSON(500, gin.H{"error": "Erreur MongoDB"})
 		return
@@ -48,6 +53,7 @@ func CreateDevice(c *gin.Context) {
 		return
 	}
 	device.ID = primitive.NewObjectID()
+	device.CreatedAt = time.Now().Unix()
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	_, err := collection.InsertOne(ctx, device)
@@ -55,6 +61,7 @@ func CreateDevice(c *gin.Context) {
 		c.JSON(500, gin.H{"error": "Erreur lors de l'insertion"})
 		return
 	}
+
 	c.JSON(201, device)
 }
 

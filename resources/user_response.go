@@ -5,7 +5,7 @@ import (
 )
 
 type UserResponse struct {
-	//ID    string `json:"id"`
+	ID        string `json:"id"`
 	Username  string `json:"name"`
 	Email     string `json:"email"`
 	Role      string `bson:"role" json:"role"`
@@ -14,7 +14,7 @@ type UserResponse struct {
 
 func NewUserResponse(user models.User) UserResponse {
 	return UserResponse{
-		// ID:    user.ID.Hex(),
+		ID:        user.ID.Hex(),
 		Username:  user.Username,
 		Email:     user.Email,
 		Role:      user.Role,
@@ -22,11 +22,10 @@ func NewUserResponse(user models.User) UserResponse {
 	}
 }
 
-
 func NewUserListResponse(users []models.User) []UserResponse {
-    responses := make([]UserResponse, 0, len(users))
-    for _, user := range users {
-        responses = append(responses, NewUserResponse(user))
-    }
-    return responses
+	responses := make([]UserResponse, 0, len(users))
+	for _, user := range users {
+		responses = append(responses, NewUserResponse(user))
+	}
+	return responses
 }

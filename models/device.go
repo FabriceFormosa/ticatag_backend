@@ -7,4 +7,5 @@ type Device struct {
 	Adress  string              `json:"adress" bson:"adress"`
 	Latitude  string 			`json:"latitude" bson:"latitude"`
 	Longitude string 			`json:"longitude" bson:"longitude"`
+	CreatedAt int64             `bson:"created_at" json:"created_at"`
 }
